@@ -117,6 +117,77 @@ TM- 1/
 
 ---
 
+## Folder Structure Explained
+
+### Backend (`backend/`)
+
+A standard Django project layout.
+
+- `core/` — Django project package containing global configuration. `settings.py` defines installed apps, database, JWT settings, CORS, and DRF config. `urls.py` is the root URL dispatcher that delegates to the tasks app routes.
+- `tasks/` — The single Django app that owns all business logic.
+  - `models.py` — Defines the `Task` model with fields: `title`, `description`, `status` (todo / in_progress / completed), `priority` (low / medium / high), `due_date`, and a FK to the built-in `User`.
+  - `serializers.py` — DRF serializers for `Task`, `User`, `Register`, and `ChangePassword`. Handles validation and field-level error formatting consumed by the frontend.
+  - `views.py` — Class-based API views. `TaskListCreateView` handles listing (with filters: status, priority, due_date, due_date_from, due_date_to, search, ordering) and creation. `TaskDetailView` handles retrieve / update / delete. `TaskStatsView` returns aggregated counts. Auth views handle register, profile, and password change.
+  - `urls.py` / `auth_urls.py` — Separate URL files to keep task routes and auth routes organised.
+  - `migrations/` — Auto-generated Django migration files tracking schema changes.
+- `requirements.txt` — Python dependencies: Django, djangorestframework, djangorestframework-simplejwt, django-cors-headers.
+
+---
+
+### Frontend (`frontend/`)
+
+A Next.js 16 App Router project with a clear separation between API, UI, and page layers.
+
+#### `app/` — Pages and Routing
+
+Follows the Next.js App Router convention where every folder with a `page.tsx` becomes a route.
+
+- `page.tsx` (root) — A **server component** that runs on the server, reads the `access` JWT cookie via `next/headers`, and immediately redirects to `/dashboard` or `/login` with no client JS.
+- `layout.tsx` — Root **server component** that wraps the entire app in `ThemeProvider`, `AuthProvider`, and the `Toaster`. Applies the global font and CSS.
+- `(auth)/` — A route group (the parentheses mean it doesn't affect the URL). Contains `/login` and `/register` pages and a shared centered layout. Both pages are **client components** because they manage form state.
+- `dashboard/page.tsx` — The main **client component**. Manages all task state, filter state, pagination, bulk selection, and renders the full dashboard UI.
+- `globals.css` — Tailwind v4 base styles, shadcn CSS custom properties (colors, radius), and custom utility classes like `glass-card`, `neon-border`, `grid-bg`, and float animations.
+
+#### `api/` — API Layer
+
+All server communication is isolated here, keeping pages clean.
+
+- `client.ts` — A configured Axios instance with two interceptors: a request interceptor that attaches the JWT access token from cookies to every request, and a response interceptor that catches 401 errors, silently calls the refresh endpoint, updates the cookie, and retries the original request. If refresh fails it redirects to `/login`.
+- `endpoints/` — Raw Axios call definitions grouped by domain (`auth.ts`, `tasks.ts`). These only know about URLs and HTTP methods.
+- `services/` — Business logic wrappers around endpoints. Each method catches errors and throws a typed `ApiError` so callers always receive a consistent error type.
+- `utils.ts` — `ApiError` class with a `toDisplayMessage()` method that flattens Django field-level errors into a single string. `handleApiError` maps Axios errors to `ApiError` instances.
+- `index.ts` — Re-exports `taskService`, `authService`, and `ApiError` for clean imports across the app.
+
+#### `components/` — UI Components
+
+- `tasks/TaskCard.tsx` — Renders one task as a card. Shows title, description, status badge, priority badge, and due date. Checkbox enables bulk selection. Edit and Delete buttons appear on hover to reduce clutter.
+- `tasks/TaskForm.tsx` — A shadcn Dialog used for both creating and editing tasks. Receives an optional `task` prop — if provided it pre-fills the form for editing, otherwise it starts empty for creation.
+- `tasks/TaskBadge.tsx` — A tiny presentational component that maps a `TaskStatus` value to the correct shadcn `Badge` variant and label.
+- `tasks/BulkActionBar.tsx` — Appears when at least one task is selected. Provides select all / deselect all, mark as status, and bulk delete actions.
+- `Navbar.tsx` — Sticky top navigation bar with the app name, a theme toggle, and a user avatar dropdown showing username, email, and a sign-out button.
+- `Pagination.tsx` — Renders numbered page buttons with ellipsis for large ranges. Hidden when there is only one page. Prev/Next buttons are disabled at boundaries.
+- `StatsCard.tsx` — A stateless presentational card showing a metric title, numeric count, icon, and description. Used in the staggered stats grid.
+- `ThemeToggle.tsx` — A button that toggles between light and dark mode using `next-themes`.
+- `ui/` — Auto-generated shadcn/ui primitives (Button, Card, Badge, Dialog, Select, Input, etc.). These are not manually edited.
+
+#### `hooks/useAuth.tsx`
+
+Provides an `AuthContext` wrapping the app. On mount it checks if an access cookie exists and if so fetches the user profile to hydrate the `user` state. Exports `useAuth()` for consuming user state, `setUser`, and `logout` anywhere in the component tree.
+
+#### `types/index.ts`
+
+Single source of truth for all TypeScript types. Defines `TaskStatus`, `TaskPriority`, `Task`, `TaskStats`, `TaskFilters`, `TaskFormData`, `User`, `AuthTokens`, `LoginFormData`, `RegisterFormData`, and `PaginatedResponse<T>`.
+
+#### `lib/utils.ts`
+
+Exports the `cn()` helper that merges Tailwind class strings using `clsx` and `tailwind-merge`, preventing class conflicts when composing dynamic styles.
+
+#### `__tests__/`
+
+Jest + React Testing Library unit tests. Each file tests a single unit in isolation — no real API calls, no router, no auth context needed. See the Unit Tests section for details.
+
+---
+
 ## Setup
 
 ### Prerequisites
