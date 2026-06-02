@@ -462,6 +462,50 @@ Tests:       27 passed, 27 total
 
 ---
 
+## Architecture
+
+This project uses a **Layered Architecture** combined with **Component-Based Architecture** on the frontend.
+
+### Frontend Layers (top → bottom)
+
+```
+Pages (app/)
+    └── Components (components/)
+            └── Services (api/services/)
+                    └── Endpoints (api/endpoints/)
+                            └── Client (api/client.ts)
+```
+
+Each layer only talks to the layer directly below it. Pages call services, services call endpoints, endpoints use the Axios client.
+
+| Layer | Location | Responsibility |
+|---|---|---|
+| Pages | `app/` | Routing, page-level state, rendering |
+| Components | `components/` | Reusable UI units |
+| Services | `api/services/` | Business logic, error handling |
+| Endpoints | `api/endpoints/` | Raw HTTP call definitions |
+| Client | `api/client.ts` | Axios instance, JWT interceptors |
+
+### Backend Layers
+
+Follows the standard **Django MVT** pattern where the Template layer is replaced by the React frontend.
+
+| Layer | Location | Responsibility |
+|---|---|---|
+| URLs | `urls.py` / `auth_urls.py` | Route incoming requests |
+| Views | `views.py` | Request / response logic |
+| Serializers | `serializers.py` | Validate and transform data |
+| Models | `models.py` | Database schema and ORM |
+
+### Other Patterns Used
+
+- **Repository-like pattern** — `taskService` and `authService` abstract all data fetching behind a consistent interface so pages never call Axios directly.
+- **Context pattern** — `useAuth` uses React Context to share auth state globally without prop drilling.
+- **Server / Client component split** — Next.js App Router pattern where server components handle routing and auth checks, and client components handle interactivity.
+- **Presentational vs Container components** — `StatsCard`, `TaskBadge`, and `Pagination` are pure presentational components. `dashboard/page.tsx` is the container that owns all state.
+
+---
+
 ## Design Decisions
 
 ### 1. Modern Dashboard-First Interface
