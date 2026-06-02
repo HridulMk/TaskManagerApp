@@ -51,6 +51,8 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter]     = useState<TaskStatus | "all">("all");
   const [priorityFilter, setPriorityFilter] = useState<TaskPriority | "all">("all");
   const [dueDateFilter, setDueDateFilter]   = useState<string>("");
+  const [dueDateFrom, setDueDateFrom]       = useState<string>("");
+  const [dueDateTo, setDueDateTo]           = useState<string>("");
   const [ordering, setOrdering]             = useState<string>("default");
   const [formOpen, setFormOpen]         = useState(false);
   const [editTask, setEditTask]         = useState<Task | null>(null);
@@ -72,7 +74,9 @@ export default function DashboardPage() {
         priority: priorityFilter !== "all" ? priorityFilter : undefined,
         search:   search || undefined,
         ordering: ordering !== "default"   ? ordering       : undefined,
-        due_date: dueDateFilter || undefined,
+        due_date:      dueDateFilter || undefined,
+        due_date_from: dueDateFrom   || undefined,
+        due_date_to:   dueDateTo     || undefined,
         page,
       });
       setTasks(data.results);
@@ -86,10 +90,10 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [statusFilter, priorityFilter, dueDateFilter, search, ordering, page]);
+  }, [statusFilter, priorityFilter, dueDateFilter, dueDateFrom, dueDateTo, search, ordering, page]);
 
   // Reset to page 1 whenever filters/search/ordering change
-  useEffect(() => { setPage(1); }, [statusFilter, priorityFilter, dueDateFilter, search, ordering]);
+  useEffect(() => { setPage(1); }, [statusFilter, priorityFilter, dueDateFilter, dueDateFrom, dueDateTo, search, ordering]);
 
   useEffect(() => {
     if (!authLoading && !user) router.push("/login");
@@ -181,11 +185,23 @@ export default function DashboardPage() {
 
 
 
+  const today = new Date().toISOString().split("T")[0];
+
   const highPriorityTasks = tasks.filter(
-  (task) =>
-    task.priority === "high" &&
-    task.status !== "completed"
-);
+    (task) => task.priority === "high" && task.status !== "completed"
+  );
+
+  function handleTodaysFocusClick() {
+    const dayAfterTomorrow = new Date();
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    setPriorityFilter("high");
+    setStatusFilter("all");
+    setSearch("");
+    setDueDateFilter("");
+    setDueDateFrom(today);
+    setDueDateTo(dayAfterTomorrow.toISOString().split("T")[0]);
+    document.getElementById("task-grid")?.scrollIntoView({ behavior: "smooth" });
+  }
 
 const completedPercentage =
   stats.total > 0
@@ -297,7 +313,7 @@ const completedPercentage =
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
   {/* Today's Focus */}
-  <Card className="glass-card neon-border hover-glow">
+  <Card className="glass-card neon-border hover-glow cursor-pointer" onClick={handleTodaysFocusClick}>
     <CardHeader>
       <CardTitle className="flex items-center gap-2">
         <Target className="h-5 w-5 text-primary" />
@@ -425,7 +441,7 @@ const completedPercentage =
 
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div id="task-grid" className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input

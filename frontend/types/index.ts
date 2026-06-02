@@ -47,6 +47,8 @@ export interface TaskFilters {
   search?: string;
   ordering?: string;
   due_date?: string;
+  due_date_from?: string;
+  due_date_to?: string;
   page?: number;
 }
 
