@@ -59,10 +59,13 @@ class TaskListCreateView(generics.ListCreateAPIView):
         qs = Task.objects.filter(user=self.request.user)
         task_status = self.request.query_params.get('status')
         priority = self.request.query_params.get('priority')
+        due_date = self.request.query_params.get('due_date')
         if task_status:
             qs = qs.filter(status=task_status)
         if priority:
             qs = qs.filter(priority=priority)
+        if due_date:
+            qs = qs.filter(due_date=due_date)
         return qs
 
     def perform_create(self, serializer):
